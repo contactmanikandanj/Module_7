@@ -1,0 +1,54 @@
+name: PowerShell CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up PowerShell
+      - name: Set up PowerShell
+        uses: PowerShell/powershell-action@v2
+        with:
+          version: '7.x'
+
+      # Step 3: Install Azure PowerShell module
+      - name: Install Azure PowerShell Module
+        run: |
+          Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force
+          Import-Module Az
+        shell: pwsh
+
+      # Step 4: Lint PowerShell scripts
+      - name: Lint PowerShell Scripts
+        run: |
+          Write-Output "Linting all PowerShell scripts..."
+          $files = Get-ChildItem -Path './PowerShellScripts' -Filter '*.ps1' -Recurse
+          foreach ($file in $files) {
+            Write-Output "Checking syntax for: $($file.Name)"
+            $null = Test-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content -Path $file.FullName | Out-String)))
+          }
+        shell: pwsh
+
+      # Step 5 (Optional): Log in to Azure for resource validation
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Step 6: Run the PowerShell script as a test
+      - name: Test Azure VM Deployment Script
+        run: |
+          ./PowerShellScripts/Module_7/script.ps1
+        shell: pwsh
