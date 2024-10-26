@@ -9,46 +9,38 @@ on:
       - main
 
 jobs:
-  test:
+  PowerShellCI:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository
-      - name: Checkout Code
+      # Step 1: Check out the repository
+      - name: Check out repository
         uses: actions/checkout@v3
 
       # Step 2: Set up PowerShell
-      - name: Set up PowerShell
-        uses: PowerShell/powershell-action@v2
+      - name: Install PowerShell
+        uses: actions/setup-dotnet@v3
         with:
-          version: '7.x'
+          dotnet-version: '7.x'
 
-      # Step 3: Install Azure PowerShell module
+      # Step 3: Install Az module
       - name: Install Azure PowerShell Module
         run: |
-          Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force
-          Import-Module Az
-        shell: pwsh
+          pwsh -c "Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force"
 
-      # Step 4: Lint PowerShell scripts
+      # Step 4: Lint PowerShell Scripts for syntax errors
       - name: Lint PowerShell Scripts
         run: |
-          Write-Output "Linting all PowerShell scripts..."
-          $files = Get-ChildItem -Path './PowerShellScripts' -Filter '*.ps1' -Recurse
-          foreach ($file in $files) {
-            Write-Output "Checking syntax for: $($file.Name)"
-            $null = Test-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content -Path $file.FullName | Out-String)))
-          }
-        shell: pwsh
+          pwsh -c "Write-Output 'Linting all PowerShell scripts...'"
+          pwsh -c "$files = Get-ChildItem -Path './PowerShellScripts' -Filter '*.ps1' -Recurse"
+          pwsh -c "foreach ($file in $files) { Write-Output 'Checking syntax for: $($file.Name)' ; $null = Test-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content -Path $file.FullName | Out-String))) }"
 
-      # Step 5 (Optional): Log in to Azure for resource validation
-      - name: Azure Login
+      # Step 5: (Optional) Authenticate with Azure if needed
+      - name: Login to Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Step 6: Run the PowerShell script as a test
-      - name: Test Azure VM Deployment Script
-        run: |
-          ./PowerShellScripts/Module_7/script.ps1
-        shell: pwsh
+      # Step 6: Run PowerShell Script Test
+      - name: Run PowerShell Script Test
+        run: pwsh ./PowerShellScripts/Module_7/script.ps1
