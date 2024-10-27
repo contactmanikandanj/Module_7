@@ -1,0 +1,44 @@
+name: PowerShell CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  PowerShellCI:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out the repository
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      # Step 2: Set up PowerShell
+      - name: Install PowerShell
+        uses: actions/setup-pwsh@v2
+
+      # Step 3: Install Az module
+      - name: Install Azure PowerShell Module
+        run: |
+          pwsh -c "Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force"
+
+      # Step 4: Lint PowerShell Scripts for syntax errors
+      - name: Lint PowerShell Scripts
+        run: |
+          pwsh -c "Write-Output 'Linting all PowerShell scripts...'"
+          pwsh -c "$files = Get-ChildItem -Path './PowerShellScripts' -Filter '*.ps1' -Recurse"
+          pwsh -c "foreach ($file in $files) { Write-Output 'Checking syntax for: $($file.Name)'; $null = Test-Command -ScriptBlock ([ScriptBlock]::Create((Get-Content -Path $file.FullName | Out-String))) }"
+
+      # Step 5: (Optional) Authenticate with Azure if needed
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Step 6: Run PowerShell Script Test
+      - name: Run PowerShell Script Test
+        run: pwsh ./PowerShellScripts/Module_7/script.ps1
